@@ -17,45 +17,78 @@ package com.example.androiddevchallenge
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material.MaterialTheme
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import com.example.androiddevchallenge.ui.home.LandingScreen
 import com.example.androiddevchallenge.ui.theme.MyTheme
+import com.example.androiddevchallenge.ui.timer.TimerScreen
+import com.example.androiddevchallenge.ui.timer.TimerViewModel
 
 class MainActivity : AppCompatActivity() {
+    private val countDownViewModel by viewModels<TimerViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyTheme {
-                MyApp()
+            MyTheme(darkTheme = true) {
+                mainScreen(timerViewModel = countDownViewModel)
             }
         }
     }
 }
 
-// Start building your app here!
-@Composable
-fun MyApp() {
-    Surface(color = MaterialTheme.colors.background) {
-        Text(text = "Ready... Set... GO!")
-    }
-}
+enum class SplashState { Shown, Completed }
 
-@Preview("Light Theme", widthDp = 360, heightDp = 640)
 @Composable
-fun LightPreview() {
-    MyTheme {
-        MyApp()
-    }
-}
+fun mainScreen(timerViewModel: TimerViewModel) {
+    Scaffold {
 
-@Preview("Dark Theme", widthDp = 360, heightDp = 640)
-@Composable
-fun DarkPreview() {
-    MyTheme(darkTheme = true) {
-        MyApp()
+        val transitionState = remember { MutableTransitionState(SplashState.Shown) }
+        val transition = updateTransition(transitionState)
+        val splashAlpha by transition.animateFloat(
+            transitionSpec = {
+                tween(durationMillis = 100)
+            }
+        ) {
+            if (it == SplashState.Shown) 1f else 0f
+        }
+        val contentAlpha by transition.animateFloat(
+            transitionSpec = {
+                tween(durationMillis = 300)
+            }
+        ) {
+            if (it == SplashState.Shown) 0f else 1f
+        }
+
+        Box {
+            LandingScreen(
+                modifier = Modifier.alpha(splashAlpha),
+                onTimeout = {
+                    transitionState.targetState = SplashState.Completed
+                }
+            )
+
+            Surface(modifier = Modifier.alpha(contentAlpha)) {
+                TimerScreen(
+                    timerViewModel.time,
+                    timerViewModel::onTimeChanged,
+                    timerViewModel.state,
+                    timerViewModel::onStateChanged,
+                    timerViewModel.progress
+                )
+            }
+        }
     }
 }
